@@ -1,0 +1,27 @@
+{
+  "name": "mp3gain",
+  "version": "0.0.1",
+  "description": "Mp3 gain utility transcompiled with emscripen from C++ cli utility.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/orcwarrior/node-mp3gain.git"
+  },
+  "keywords": [
+    "Mp3",
+    "replay",
+    "gain",
+    "utility",
+    "music",
+    "loundness"
+  ],
+  "author": "Dariusz Kobuszewski",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/orcwarrior/node-mp3gain/issues"
+  },
+  "homepage": "https://github.com/orcwarrior/node-mp3gain#readme"
+}

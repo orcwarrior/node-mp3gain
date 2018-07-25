@@ -4,7 +4,7 @@ Simple transcompile with [emscripten](http://kripken.github.io/emscripten-site/)
 Take note it's prepared to work with node enviroment. After re-compilation to JS, simple hack was implemened to give a possibility to use relative path as ./ and root of the drive with / or C:\ As the programs compiled by emscripten needs filestystem to be mounted.
 
 ## mp3gain help
-`Usage: ./mp3gain.js [options] <infile> [<infile 2> ...]
+```Usage: ./mp3gain.js [options] <infile> [<infile 2> ...]
 options:
         -v - show version number
         -g <i>  - apply gain i without doing any analysis
@@ -42,4 +42,4 @@ options:
               (use "-? wrap" switch for a complete explanation)
 If you specify -r and -a, only the second one will work
 If you do not specify -c, the program will stop and ask before
-     applying gain change to a file that might clip`
+     applying gain change to a file that might clip```

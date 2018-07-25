@@ -52,13 +52,17 @@ Module['preRun'] = function () {
 };
 
 function preprocessArgs(args) {
-  console.log("Preprocess args: ", args);
-  if (ENVIRONMENT_IS_NODE) {
-    const ppArgs = args.slice();
-    const path = require('path');
-    const root = path.parse(process.cwd()).root;
-    ppArgs[0] = pathToVirtualMountedPath(args[0], root);
-    return ppArgs;
+  if (ENVIRONMENT_IS_NODE && args.length) {
+    // Writing it like dat feels like dark ages :o
+    var path = require('path');
+    var root = path.parse(process.cwd()).root;
+    var pathArgs = args.filter(function(arg) {return arg[0] !== '-';});
+    var pathArgsStart = args.length - pathArgs.length;
+    var finalArray = args.slice(0, pathArgsStart);
+    pathArgs.forEach(function (arg) {
+      finalArray.push(pathToVirtualMountedPath(arg, root));
+    });
+    return finalArray;
   }
   else return args;
 
@@ -6574,6 +6578,7 @@ if (Module['noInitialRun']) {
 
 Module["noExitRuntime"] = true;
 
+// DK: Start app only if args was passed:
 run();
 
 // {{POST_RUN_ADDITIONS}}

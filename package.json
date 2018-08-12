@@ -4,7 +4,8 @@
   "description": "Mp3 gain utility transcompiled with emscripen from C++ cli utility.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test.js --debug",
+    "build": "rollup -c --environment INCLUDE_DEPS,BUILD:production"
   },
   "repository": {
     "type": "git",
@@ -23,5 +24,16 @@
   "bugs": {
     "url": "https://github.com/orcwarrior/node-mp3gain/issues"
   },
-  "homepage": "https://github.com/orcwarrior/node-mp3gain#readme"
+  "homepage": "https://github.com/orcwarrior/node-mp3gain#readme",
+  "devDependencies": {
+    "babel-core": "^6.26.3",
+    "babel-plugin-external-helpers": "^6.22.0",
+    "babel-preset-env": "^1.7.0",
+    "rollup": "^0.63.4",
+    "rollup-plugin-babel": "^3.0.7",
+    "rollup-plugin-node-resolve": "^3.3.0"
+  },
+  "dependencies": {
+    "babel-polyfill": "^6.26.0"
+  }
 }

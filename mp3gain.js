@@ -11,8 +11,8 @@
 // after the generated code, you will need to define   var Module = {};
 // before the code. Then that object will be used in the code, and you
 // can continue to use Module afterwards as well.
-var Module = typeof Module !== 'undefined' ? Module : {};
-
+console.log("Org Module: ", global.Module);
+var Module = (global.Module) ? global.Module : {};
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
 // {{PRE_JSES}}
@@ -24,9 +24,9 @@ var Module = typeof Module !== 'undefined' ? Module : {};
 // defensive during initialization.
 var moduleOverrides = {};
 var key;
-for (key in Module) {
-  if (Module.hasOwnProperty(key)) {
-    moduleOverrides[key] = Module[key];
+for (key in global.Module) {
+  if (global.Module[key]) {
+    moduleOverrides[key] = global.Module[key];
   }
 }
 
@@ -41,6 +41,7 @@ Module['preRun'] = function () {
     const path = require('path');
     const root = path.parse(process.cwd()).root;
 
+    FS.init();
     FS.mkdir('/cwd');
     FS.mkdir('/root');
     // console.log(`Root is: ${root}`);
@@ -52,7 +53,7 @@ Module['preRun'] = function () {
 };
 
 function preprocessArgs(args) {
-  if (ENVIRONMENT_IS_NODE && args.length) {
+  if (ENVIRONMENT_IS_NODE && args && args.length) {
     // Writing it like dat feels like dark ages :o
     var path = require('path');
     var root = path.parse(process.cwd()).root;
@@ -226,7 +227,7 @@ if (ENVIRONMENT_IS_NODE) {
 // console.log is checked first, as 'print' on the web will open a print dialogue
 // printErr is preferable to console.warn (works better in shells)
 // bind(console) is necessary to fix IE/Edge closed dev tools panel behavior.
-Module['print'] = typeof console !== 'undefined' ? console.log.bind(console) : (typeof print !== 'undefined' ? print : null);
+Module['print'] = function (msg) {console.log("m: ",msg); }
 Module['printErr'] = typeof printErr !== 'undefined' ? printErr : ((typeof console !== 'undefined' && console.warn.bind(console)) || Module['print']);
 
 // *** Environment setup code ***
@@ -241,6 +242,7 @@ for (key in moduleOverrides) {
     Module[key] = moduleOverrides[key];
   }
 }
+
 // Free the object hierarchy contained in the overrides, this lets the GC
 // reclaim data used e.g. in memoryInitializerRequest, which is a large typed array.
 moduleOverrides = undefined;
@@ -286,21 +288,14 @@ function alignMemory(size, factor) {
 
 function getNativeTypeSize(type) {
   switch (type) {
-    case 'i1':
-    case 'i8':
-      return 1;
-    case 'i16':
-      return 2;
-    case 'i32':
-      return 4;
-    case 'i64':
-      return 8;
-    case 'float':
-      return 4;
-    case 'double':
-      return 8;
+    case 'i1': case 'i8': return 1;
+    case 'i16': return 2;
+    case 'i32': return 4;
+    case 'i64': return 8;
+    case 'float': return 4;
+    case 'double': return 8;
     default: {
-      if (type[type.length - 1] === '*') {
+      if (type[type.length-1] === '*') {
         return 4; // A pointer
       } else if (type[0] === 'i') {
         var bits = parseInt(type.substr(1));
@@ -322,12 +317,12 @@ function warnOnce(text) {
 }
 
 var asm2wasmImports = { // special asm2wasm imports
-  "f64-rem": function (x, y) {
-    return x % y;
-  },
-  "debugger": function () {
-    debugger;
-  }
+    "f64-rem": function(x, y) {
+        return x % y;
+    },
+    "debugger": function() {
+        debugger;
+    }
 };
 
 
@@ -541,56 +536,33 @@ function cwrap(ident, returnType, argTypes) {
 /** @type {function(number, number, string, boolean=)} */
 function setValue(ptr, value, type, noSafe) {
   type = type || 'i8';
-  if (type.charAt(type.length - 1) === '*') type = 'i32'; // pointers are 32-bit
-  switch (type) {
-    case 'i1':
-      HEAP8[((ptr) >> 0)] = value;
-      break;
-    case 'i8':
-      HEAP8[((ptr) >> 0)] = value;
-      break;
-    case 'i16':
-      HEAP16[((ptr) >> 1)] = value;
-      break;
-    case 'i32':
-      HEAP32[((ptr) >> 2)] = value;
-      break;
-    case 'i64':
-      (tempI64 = [value >>> 0, (tempDouble = value, (+(Math_abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? ((Math_min((+(Math_floor((tempDouble) / 4294967296.0))), 4294967295.0)) | 0) >>> 0 : (~~((+(Math_ceil((tempDouble - +(((~~(tempDouble))) >>> 0)) / 4294967296.0))))) >>> 0) : 0)], HEAP32[((ptr) >> 2)] = tempI64[0], HEAP32[(((ptr) + (4)) >> 2)] = tempI64[1]);
-      break;
-    case 'float':
-      HEAPF32[((ptr) >> 2)] = value;
-      break;
-    case 'double':
-      HEAPF64[((ptr) >> 3)] = value;
-      break;
-    default:
-      abort('invalid type for setValue: ' + type);
-  }
+  if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
+    switch(type) {
+      case 'i1': HEAP8[((ptr)>>0)]=value; break;
+      case 'i8': HEAP8[((ptr)>>0)]=value; break;
+      case 'i16': HEAP16[((ptr)>>1)]=value; break;
+      case 'i32': HEAP32[((ptr)>>2)]=value; break;
+      case 'i64': (tempI64 = [value>>>0,(tempDouble=value,(+(Math_abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? ((Math_min((+(Math_floor((tempDouble)/4294967296.0))), 4294967295.0))|0)>>>0 : (~~((+(Math_ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)],HEAP32[((ptr)>>2)]=tempI64[0],HEAP32[(((ptr)+(4))>>2)]=tempI64[1]); break;
+      case 'float': HEAPF32[((ptr)>>2)]=value; break;
+      case 'double': HEAPF64[((ptr)>>3)]=value; break;
+      default: abort('invalid type for setValue: ' + type);
+    }
 }
 
 /** @type {function(number, string, boolean=)} */
 function getValue(ptr, type, noSafe) {
   type = type || 'i8';
-  if (type.charAt(type.length - 1) === '*') type = 'i32'; // pointers are 32-bit
-  switch (type) {
-    case 'i1':
-      return HEAP8[((ptr) >> 0)];
-    case 'i8':
-      return HEAP8[((ptr) >> 0)];
-    case 'i16':
-      return HEAP16[((ptr) >> 1)];
-    case 'i32':
-      return HEAP32[((ptr) >> 2)];
-    case 'i64':
-      return HEAP32[((ptr) >> 2)];
-    case 'float':
-      return HEAPF32[((ptr) >> 2)];
-    case 'double':
-      return HEAPF64[((ptr) >> 3)];
-    default:
-      abort('invalid type for getValue: ' + type);
-  }
+  if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
+    switch(type) {
+      case 'i1': return HEAP8[((ptr)>>0)];
+      case 'i8': return HEAP8[((ptr)>>0)];
+      case 'i16': return HEAP16[((ptr)>>1)];
+      case 'i32': return HEAP32[((ptr)>>2)];
+      case 'i64': return HEAP32[((ptr)>>2)];
+      case 'float': return HEAPF32[((ptr)>>2)];
+      case 'double': return HEAPF64[((ptr)>>3)];
+      default: abort('invalid type for getValue: ' + type);
+    }
   return null;
 }
 
@@ -763,15 +735,9 @@ function UTF8ArrayToString(u8Array, idx) {
       // For UTF8 byte structure, see http://en.wikipedia.org/wiki/UTF-8#Description and https://www.ietf.org/rfc/rfc2279.txt and https://tools.ietf.org/html/rfc3629
       u0 = u8Array[idx++];
       if (!u0) return str;
-      if (!(u0 & 0x80)) {
-        str += String.fromCharCode(u0);
-        continue;
-      }
+      if (!(u0 & 0x80)) { str += String.fromCharCode(u0); continue; }
       u1 = u8Array[idx++] & 63;
-      if ((u0 & 0xE0) == 0xC0) {
-        str += String.fromCharCode(((u0 & 31) << 6) | u1);
-        continue;
-      }
+      if ((u0 & 0xE0) == 0xC0) { str += String.fromCharCode(((u0 & 31) << 6) | u1); continue; }
       u2 = u8Array[idx++] & 63;
       if ((u0 & 0xF0) == 0xE0) {
         u0 = ((u0 & 15) << 12) | (u1 << 6) | u2;
@@ -803,7 +769,7 @@ function UTF8ArrayToString(u8Array, idx) {
 // a copy of that string as a Javascript String object.
 
 function UTF8ToString(ptr) {
-  return UTF8ArrayToString(HEAPU8, ptr);
+  return UTF8ArrayToString(HEAPU8,ptr);
 }
 
 // Copies the given Javascript String object 'str' to the given byte array at address 'outIdx',
@@ -877,7 +843,7 @@ function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite) {
 
 function stringToUTF8(str, outPtr, maxBytesToWrite) {
   assert(typeof maxBytesToWrite == 'number', 'stringToUTF8(str, outPtr, maxBytesToWrite) is missing the third parameter that specifies the length of the output buffer!');
-  return stringToUTF8Array(str, HEAPU8, outPtr, maxBytesToWrite);
+  return stringToUTF8Array(str, HEAPU8,outPtr, maxBytesToWrite);
 }
 
 // Returns the number of bytes the given Javascript string takes if encoded as a UTF8 byte array, EXCLUDING the null terminator byte.
@@ -1789,6 +1755,9 @@ integrateWasmJS();
 var ASM_CONSTS = [];
 
 
+
+
+
 STATIC_BASE = GLOBAL_BASE;
 
 STATICTOP = STATIC_BASE + 4195120;
@@ -1801,8 +1770,7 @@ Module["STATIC_BASE"] = STATIC_BASE;
 Module["STATIC_BUMP"] = STATIC_BUMP;
 
 /* no memory initializer */
-var tempDoublePtr = STATICTOP;
-STATICTOP += 16;
+var tempDoublePtr = STATICTOP; STATICTOP += 16;
 
 assert(tempDoublePtr % 8 == 0);
 
@@ -1810,11 +1778,11 @@ function copyTempFloat(ptr) { // functions, because inlining this code increases
 
   HEAP8[tempDoublePtr] = HEAP8[ptr];
 
-  HEAP8[tempDoublePtr + 1] = HEAP8[ptr + 1];
+  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];
 
-  HEAP8[tempDoublePtr + 2] = HEAP8[ptr + 2];
+  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];
 
-  HEAP8[tempDoublePtr + 3] = HEAP8[ptr + 3];
+  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];
 
 }
 
@@ -1822,19 +1790,19 @@ function copyTempDouble(ptr) {
 
   HEAP8[tempDoublePtr] = HEAP8[ptr];
 
-  HEAP8[tempDoublePtr + 1] = HEAP8[ptr + 1];
+  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];
 
-  HEAP8[tempDoublePtr + 2] = HEAP8[ptr + 2];
+  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];
 
-  HEAP8[tempDoublePtr + 3] = HEAP8[ptr + 3];
+  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];
 
-  HEAP8[tempDoublePtr + 4] = HEAP8[ptr + 4];
+  HEAP8[tempDoublePtr+4] = HEAP8[ptr+4];
 
-  HEAP8[tempDoublePtr + 5] = HEAP8[ptr + 5];
+  HEAP8[tempDoublePtr+5] = HEAP8[ptr+5];
 
-  HEAP8[tempDoublePtr + 6] = HEAP8[ptr + 6];
+  HEAP8[tempDoublePtr+6] = HEAP8[ptr+6];
 
-  HEAP8[tempDoublePtr + 7] = HEAP8[ptr + 7];
+  HEAP8[tempDoublePtr+7] = HEAP8[ptr+7];
 
 }
 
@@ -1845,277 +1813,36 @@ function ___lock() {
 }
 
 
-var ERRNO_CODES = {
-  EPERM: 1,
-  ENOENT: 2,
-  ESRCH: 3,
-  EINTR: 4,
-  EIO: 5,
-  ENXIO: 6,
-  E2BIG: 7,
-  ENOEXEC: 8,
-  EBADF: 9,
-  ECHILD: 10,
-  EAGAIN: 11,
-  EWOULDBLOCK: 11,
-  ENOMEM: 12,
-  EACCES: 13,
-  EFAULT: 14,
-  ENOTBLK: 15,
-  EBUSY: 16,
-  EEXIST: 17,
-  EXDEV: 18,
-  ENODEV: 19,
-  ENOTDIR: 20,
-  EISDIR: 21,
-  EINVAL: 22,
-  ENFILE: 23,
-  EMFILE: 24,
-  ENOTTY: 25,
-  ETXTBSY: 26,
-  EFBIG: 27,
-  ENOSPC: 28,
-  ESPIPE: 29,
-  EROFS: 30,
-  EMLINK: 31,
-  EPIPE: 32,
-  EDOM: 33,
-  ERANGE: 34,
-  ENOMSG: 42,
-  EIDRM: 43,
-  ECHRNG: 44,
-  EL2NSYNC: 45,
-  EL3HLT: 46,
-  EL3RST: 47,
-  ELNRNG: 48,
-  EUNATCH: 49,
-  ENOCSI: 50,
-  EL2HLT: 51,
-  EDEADLK: 35,
-  ENOLCK: 37,
-  EBADE: 52,
-  EBADR: 53,
-  EXFULL: 54,
-  ENOANO: 55,
-  EBADRQC: 56,
-  EBADSLT: 57,
-  EDEADLOCK: 35,
-  EBFONT: 59,
-  ENOSTR: 60,
-  ENODATA: 61,
-  ETIME: 62,
-  ENOSR: 63,
-  ENONET: 64,
-  ENOPKG: 65,
-  EREMOTE: 66,
-  ENOLINK: 67,
-  EADV: 68,
-  ESRMNT: 69,
-  ECOMM: 70,
-  EPROTO: 71,
-  EMULTIHOP: 72,
-  EDOTDOT: 73,
-  EBADMSG: 74,
-  ENOTUNIQ: 76,
-  EBADFD: 77,
-  EREMCHG: 78,
-  ELIBACC: 79,
-  ELIBBAD: 80,
-  ELIBSCN: 81,
-  ELIBMAX: 82,
-  ELIBEXEC: 83,
-  ENOSYS: 38,
-  ENOTEMPTY: 39,
-  ENAMETOOLONG: 36,
-  ELOOP: 40,
-  EOPNOTSUPP: 95,
-  EPFNOSUPPORT: 96,
-  ECONNRESET: 104,
-  ENOBUFS: 105,
-  EAFNOSUPPORT: 97,
-  EPROTOTYPE: 91,
-  ENOTSOCK: 88,
-  ENOPROTOOPT: 92,
-  ESHUTDOWN: 108,
-  ECONNREFUSED: 111,
-  EADDRINUSE: 98,
-  ECONNABORTED: 103,
-  ENETUNREACH: 101,
-  ENETDOWN: 100,
-  ETIMEDOUT: 110,
-  EHOSTDOWN: 112,
-  EHOSTUNREACH: 113,
-  EINPROGRESS: 115,
-  EALREADY: 114,
-  EDESTADDRREQ: 89,
-  EMSGSIZE: 90,
-  EPROTONOSUPPORT: 93,
-  ESOCKTNOSUPPORT: 94,
-  EADDRNOTAVAIL: 99,
-  ENETRESET: 102,
-  EISCONN: 106,
-  ENOTCONN: 107,
-  ETOOMANYREFS: 109,
-  EUSERS: 87,
-  EDQUOT: 122,
-  ESTALE: 116,
-  ENOTSUP: 95,
-  ENOMEDIUM: 123,
-  EILSEQ: 84,
-  EOVERFLOW: 75,
-  ECANCELED: 125,
-  ENOTRECOVERABLE: 131,
-  EOWNERDEAD: 130,
-  ESTRPIPE: 86
-};
 
-var ERRNO_MESSAGES = {
-  0: "Success",
-  1: "Not super-user",
-  2: "No such file or directory",
-  3: "No such process",
-  4: "Interrupted system call",
-  5: "I/O error",
-  6: "No such device or address",
-  7: "Arg list too long",
-  8: "Exec format error",
-  9: "Bad file number",
-  10: "No children",
-  11: "No more processes",
-  12: "Not enough core",
-  13: "Permission denied",
-  14: "Bad address",
-  15: "Block device required",
-  16: "Mount device busy",
-  17: "File exists",
-  18: "Cross-device link",
-  19: "No such device",
-  20: "Not a directory",
-  21: "Is a directory",
-  22: "Invalid argument",
-  23: "Too many open files in system",
-  24: "Too many open files",
-  25: "Not a typewriter",
-  26: "Text file busy",
-  27: "File too large",
-  28: "No space left on device",
-  29: "Illegal seek",
-  30: "Read only file system",
-  31: "Too many links",
-  32: "Broken pipe",
-  33: "Math arg out of domain of func",
-  34: "Math result not representable",
-  35: "File locking deadlock error",
-  36: "File or path name too long",
-  37: "No record locks available",
-  38: "Function not implemented",
-  39: "Directory not empty",
-  40: "Too many symbolic links",
-  42: "No message of desired type",
-  43: "Identifier removed",
-  44: "Channel number out of range",
-  45: "Level 2 not synchronized",
-  46: "Level 3 halted",
-  47: "Level 3 reset",
-  48: "Link number out of range",
-  49: "Protocol driver not attached",
-  50: "No CSI structure available",
-  51: "Level 2 halted",
-  52: "Invalid exchange",
-  53: "Invalid request descriptor",
-  54: "Exchange full",
-  55: "No anode",
-  56: "Invalid request code",
-  57: "Invalid slot",
-  59: "Bad font file fmt",
-  60: "Device not a stream",
-  61: "No data (for no delay io)",
-  62: "Timer expired",
-  63: "Out of streams resources",
-  64: "Machine is not on the network",
-  65: "Package not installed",
-  66: "The object is remote",
-  67: "The link has been severed",
-  68: "Advertise error",
-  69: "Srmount error",
-  70: "Communication error on send",
-  71: "Protocol error",
-  72: "Multihop attempted",
-  73: "Cross mount point (not really error)",
-  74: "Trying to read unreadable message",
-  75: "Value too large for defined data type",
-  76: "Given log. name not unique",
-  77: "f.d. invalid for this operation",
-  78: "Remote address changed",
-  79: "Can   access a needed shared lib",
-  80: "Accessing a corrupted shared lib",
-  81: ".lib section in a.out corrupted",
-  82: "Attempting to link in too many libs",
-  83: "Attempting to exec a shared library",
-  84: "Illegal byte sequence",
-  86: "Streams pipe error",
-  87: "Too many users",
-  88: "Socket operation on non-socket",
-  89: "Destination address required",
-  90: "Message too long",
-  91: "Protocol wrong type for socket",
-  92: "Protocol not available",
-  93: "Unknown protocol",
-  94: "Socket type not supported",
-  95: "Not supported",
-  96: "Protocol family not supported",
-  97: "Address family not supported by protocol family",
-  98: "Address already in use",
-  99: "Address not available",
-  100: "Network interface is not configured",
-  101: "Network is unreachable",
-  102: "Connection reset by network",
-  103: "Connection aborted",
-  104: "Connection reset by peer",
-  105: "No buffer space available",
-  106: "Socket is already connected",
-  107: "Socket is not connected",
-  108: "Can't send after socket shutdown",
-  109: "Too many references",
-  110: "Connection timed out",
-  111: "Connection refused",
-  112: "Host is down",
-  113: "Host is unreachable",
-  114: "Socket already connected",
-  115: "Connection already in progress",
-  116: "Stale file handle",
-  122: "Quota exceeded",
-  123: "No medium (in tape drive)",
-  125: "Operation canceled",
-  130: "Previous owner died",
-  131: "State not recoverable"
-};
+
+
+var ERRNO_CODES={EPERM:1,ENOENT:2,ESRCH:3,EINTR:4,EIO:5,ENXIO:6,E2BIG:7,ENOEXEC:8,EBADF:9,ECHILD:10,EAGAIN:11,EWOULDBLOCK:11,ENOMEM:12,EACCES:13,EFAULT:14,ENOTBLK:15,EBUSY:16,EEXIST:17,EXDEV:18,ENODEV:19,ENOTDIR:20,EISDIR:21,EINVAL:22,ENFILE:23,EMFILE:24,ENOTTY:25,ETXTBSY:26,EFBIG:27,ENOSPC:28,ESPIPE:29,EROFS:30,EMLINK:31,EPIPE:32,EDOM:33,ERANGE:34,ENOMSG:42,EIDRM:43,ECHRNG:44,EL2NSYNC:45,EL3HLT:46,EL3RST:47,ELNRNG:48,EUNATCH:49,ENOCSI:50,EL2HLT:51,EDEADLK:35,ENOLCK:37,EBADE:52,EBADR:53,EXFULL:54,ENOANO:55,EBADRQC:56,EBADSLT:57,EDEADLOCK:35,EBFONT:59,ENOSTR:60,ENODATA:61,ETIME:62,ENOSR:63,ENONET:64,ENOPKG:65,EREMOTE:66,ENOLINK:67,EADV:68,ESRMNT:69,ECOMM:70,EPROTO:71,EMULTIHOP:72,EDOTDOT:73,EBADMSG:74,ENOTUNIQ:76,EBADFD:77,EREMCHG:78,ELIBACC:79,ELIBBAD:80,ELIBSCN:81,ELIBMAX:82,ELIBEXEC:83,ENOSYS:38,ENOTEMPTY:39,ENAMETOOLONG:36,ELOOP:40,EOPNOTSUPP:95,EPFNOSUPPORT:96,ECONNRESET:104,ENOBUFS:105,EAFNOSUPPORT:97,EPROTOTYPE:91,ENOTSOCK:88,ENOPROTOOPT:92,ESHUTDOWN:108,ECONNREFUSED:111,EADDRINUSE:98,ECONNABORTED:103,ENETUNREACH:101,ENETDOWN:100,ETIMEDOUT:110,EHOSTDOWN:112,EHOSTUNREACH:113,EINPROGRESS:115,EALREADY:114,EDESTADDRREQ:89,EMSGSIZE:90,EPROTONOSUPPORT:93,ESOCKTNOSUPPORT:94,EADDRNOTAVAIL:99,ENETRESET:102,EISCONN:106,ENOTCONN:107,ETOOMANYREFS:109,EUSERS:87,EDQUOT:122,ESTALE:116,ENOTSUP:95,ENOMEDIUM:123,EILSEQ:84,EOVERFLOW:75,ECANCELED:125,ENOTRECOVERABLE:131,EOWNERDEAD:130,ESTRPIPE:86};
+
+var ERRNO_MESSAGES={0:"Success",1:"Not super-user",2:"No such file or directory",3:"No such process",4:"Interrupted system call",5:"I/O error",6:"No such device or address",7:"Arg list too long",8:"Exec format error",9:"Bad file number",10:"No children",11:"No more processes",12:"Not enough core",13:"Permission denied",14:"Bad address",15:"Block device required",16:"Mount device busy",17:"File exists",18:"Cross-device link",19:"No such device",20:"Not a directory",21:"Is a directory",22:"Invalid argument",23:"Too many open files in system",24:"Too many open files",25:"Not a typewriter",26:"Text file busy",27:"File too large",28:"No space left on device",29:"Illegal seek",30:"Read only file system",31:"Too many links",32:"Broken pipe",33:"Math arg out of domain of func",34:"Math result not representable",35:"File locking deadlock error",36:"File or path name too long",37:"No record locks available",38:"Function not implemented",39:"Directory not empty",40:"Too many symbolic links",42:"No message of desired type",43:"Identifier removed",44:"Channel number out of range",45:"Level 2 not synchronized",46:"Level 3 halted",47:"Level 3 reset",48:"Link number out of range",49:"Protocol driver not attached",50:"No CSI structure available",51:"Level 2 halted",52:"Invalid exchange",53:"Invalid request descriptor",54:"Exchange full",55:"No anode",56:"Invalid request code",57:"Invalid slot",59:"Bad font file fmt",60:"Device not a stream",61:"No data (for no delay io)",62:"Timer expired",63:"Out of streams resources",64:"Machine is not on the network",65:"Package not installed",66:"The object is remote",67:"The link has been severed",68:"Advertise error",69:"Srmount error",70:"Communication error on send",71:"Protocol error",72:"Multihop attempted",73:"Cross mount point (not really error)",74:"Trying to read unreadable message",75:"Value too large for defined data type",76:"Given log. name not unique",77:"f.d. invalid for this operation",78:"Remote address changed",79:"Can   access a needed shared lib",80:"Accessing a corrupted shared lib",81:".lib section in a.out corrupted",82:"Attempting to link in too many libs",83:"Attempting to exec a shared library",84:"Illegal byte sequence",86:"Streams pipe error",87:"Too many users",88:"Socket operation on non-socket",89:"Destination address required",90:"Message too long",91:"Protocol wrong type for socket",92:"Protocol not available",93:"Unknown protocol",94:"Socket type not supported",95:"Not supported",96:"Protocol family not supported",97:"Address family not supported by protocol family",98:"Address already in use",99:"Address not available",100:"Network interface is not configured",101:"Network is unreachable",102:"Connection reset by network",103:"Connection aborted",104:"Connection reset by peer",105:"No buffer space available",106:"Socket is already connected",107:"Socket is not connected",108:"Can't send after socket shutdown",109:"Too many references",110:"Connection timed out",111:"Connection refused",112:"Host is down",113:"Host is unreachable",114:"Socket already connected",115:"Connection already in progress",116:"Stale file handle",122:"Quota exceeded",123:"No medium (in tape drive)",125:"Operation canceled",130:"Previous owner died",131:"State not recoverable"};
 
 function ___setErrNo(value) {
-  if (Module['___errno_location']) HEAP32[((Module['___errno_location']()) >> 2)] = value;
+  if (Module['___errno_location']) HEAP32[((Module['___errno_location']())>>2)]=value;
   else Module.printErr('failed to set errno from JS');
   return value;
 }
-
-var PATH = {
-  splitPath: function (filename) {
-    var splitPathRe = /^(\/?|)([\s\S]*?)((?:\.{1,2}|[^\/]+?|)(\.[^.\/]*|))(?:[\/]*)$/;
-    return splitPathRe.exec(filename).slice(1);
-  }, normalizeArray: function (parts, allowAboveRoot) {
-    // if the path tries to go above the root, `up` ends up > 0
-    var up = 0;
-    for (var i = parts.length - 1; i >= 0; i--) {
-      var last = parts[i];
-      if (last === '.') {
-        parts.splice(i, 1);
-      } else if (last === '..') {
-        parts.splice(i, 1);
-        up++;
-      } else if (up) {
-        parts.splice(i, 1);
-        up--;
-      }
+var PATH={splitPath:function (filename) {
+  var splitPathRe = /^(\/?|)([\s\S]*?)((?:\.{1,2}|[^\/]+?|)(\.[^.\/]*|))(?:[\/]*)$/;
+  return splitPathRe.exec(filename).slice(1);
+},normalizeArray:function (parts, allowAboveRoot) {
+  // if the path tries to go above the root, `up` ends up > 0
+  var up = 0;
+  for (var i = parts.length - 1; i >= 0; i--) {
+    var last = parts[i];
+    if (last === '.') {
+      parts.splice(i, 1);
+    } else if (last === '..') {
+      parts.splice(i, 1);
+      up++;
+    } else if (up) {
+      parts.splice(i, 1);
+      up--;
     }
+  }
     // if the path is allowed to go above the root, restore leading ..s
     if (allowAboveRoot) {
       for (; up; up--) {
@@ -4787,6 +4514,7 @@ STATICTOP += 16;
     };
   },
   init: function (input, output, error) {
+    // console.log("initing fs: ", input || Module['stdin'], output || Module['stdout'], error);
     assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
     FS.init.initialized = true;
 
@@ -6404,8 +6132,8 @@ Module['callMain'] = function callMain(args) {
 /** @type {function(Array=)} */
 function run(args) {
   args = args || Module['arguments'];
-  console.log(`run args: `, args);
 
+  console.log(`runDependencies: ${runDependencies}`);
   if (runDependencies > 0) {
     return;
   }
@@ -6414,11 +6142,12 @@ function run(args) {
 
   preRun();
 
+  console.log(`runDependencies: ${runDependencies}; Module['calledRun']: ${Module['calledRun']}`);
   if (runDependencies > 0) return; // a preRun added a dependency, run will be called later
   if (Module['calledRun']) return; // run may have just been called through dependencies being fulfilled just in this very frame
 
   function doRun() {
-    if (Module['calledRun']) return; // run may have just been called while the async setStatus time below was happening
+    if (Module['calledRun'] || !shouldRunNow) return; // run may have just been called while the async setStatus time below was happening
     Module['calledRun'] = true;
 
     if (ABORT) return;
@@ -6426,7 +6155,7 @@ function run(args) {
     ensureInitRuntime();
 
     preMain();
-    console.log(`(pre-run) run args: `, args);
+    console.log(`(pre-run) run args: ${args}, will run: ${shouldRunNow}`);
     args = preprocessArgs(args);
 
     if (Module['onRuntimeInitialized']) Module['onRuntimeInitialized']();
@@ -6482,6 +6211,8 @@ function checkUnflushedContent() {
         var stream = info.object;
         var rdev = stream.rdev;
         var tty = TTY.ttys[rdev];
+        console.log(stream);
+        console.log(tty);
         if (tty && tty.output && tty.output.length) {
           has = true;
         }
@@ -6492,7 +6223,7 @@ function checkUnflushedContent() {
   Module['print'] = print;
   Module['printErr'] = printErr;
   if (has) {
-    warnOnce('stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0 (see the FAQ), or make sure to emit a newline when you printf etc.');
+    console.error('stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0 (see the FAQ), or make sure to emit a newline when you printf etc.');
   }
 }
 
@@ -6581,10 +6312,11 @@ Module["noExitRuntime"] = true;
 // DK: Start app only if args was passed:
 run();
 
+
 // {{POST_RUN_ADDITIONS}}
 
 
-// {{MODULE_ADDITIONS}}
+// {{MODULE_ADDITIONS}}FS
 
 
 

@@ -1,0 +1,12 @@
+{
+  "presets": [
+    ["env", {
+      "modules": false,
+      "targets": {
+        "node": "4.9"
+      },
+      "useBuiltIns": true
+    }]
+  ],
+  "plugins": ["external-helpers"]
+}
